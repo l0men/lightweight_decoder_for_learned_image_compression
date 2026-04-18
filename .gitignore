@@ -1,0 +1,14 @@
+# Datasets et Checkpoints
+datasets/
+checkpoints/
+*.pth.tar
+
+# Logs
+logs/
+*.out
+*.err
+wandb/
+
+# Python
+__pycache__/
+*.pyc
