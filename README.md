@@ -6,6 +6,13 @@ The primary goal is to significantly reduce computational complexity (GFLOPs) an
 
 ---
 
+## 📖 Documentation
+
+For a detailed analysis of the methodology, experimental results, and theoretical background, please refer to the full project report:
+
+👉 **[Read the Full Project Report (PDF)](rapport.pdf)**
+
+---
 ## 📁 Project Structure
 
 The repository is organized as follows:
@@ -47,7 +54,7 @@ To ensure a rigorous scientific comparison (ablation study), we followed this pr
 The use of Depthwise Separable Convolutions allows for a massive reduction in decoder parameters (from ~1.5M to ~280k for high quality) and a significant drop in GFLOPs.
 
 ### Rate-Distortion Curve
-![Rate-Distortion Curve](evaluation/rd_curve.png)
+![Rate-Distortion Curve](evaluation/results/rd_curve.png)
 
 ---
 
