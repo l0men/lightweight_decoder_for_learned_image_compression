@@ -19,12 +19,18 @@ The repository is organized as follows:
 
 * `training/`: Python scripts for model training.
   * `train_reference_big.py`: Training the standard decoder (Baseline).
-  * `train_mix_v2_big.py`: Training the "Mix V2" decoder (Depthwise + final Pointwise).
+  * `train_mix_v2_big.py`: Training the "Depthwise Mixed" decoder .
   * `train_depthwise_big.py`: Training the "Full Depthwise" decoder.
 * `setup/`: Slurm scripts and Conda environment configurations.
 * `evaluation/`: Testing and plotting scripts.
   * `plot_compare_final.py`: Computes FLOPs, parameters, and generates Rate-Distortion curves.
-  * `rd_curve.png`: The generated results visualization.
+  * `results/rd_curve.png`: The generated results visualization.
+* `datasets/`: Folder with the training and evalution dataset.
+  * `COCO/`: The **COCO** dataset used for training the models.
+    * `test`: Test set.
+    * `train`: Training set.
+  * `kodak/` : The **kodak** dataset used for evaluating the models.
+    * `test`: Test set.
 
 ---
 
@@ -65,12 +71,16 @@ We provide two Conda environments in the `setup/` folder:
 * `environment_p100.yml`
 
 ⚠️ **Note on Complexity Measurement:**
-While both environments are suitable for training, the **`fvcore`** library (used to measure MACs/GFLOPs) is currently only configured in the **P100 environment**. For testing and generating plots, please use the P100 environment.
+While both environments are suitable for training, the **`fvcore`** library (used to measure MACs/GFLOPs) is currently only configured in the **P100 environment**. For testing and generating plots, please use the P100 environment. The P100 environnemnt can be used on 3090 but not the opposite.
 
 ### Installation
 ```bash
 conda env create -f setup/environment_p100.yml
 conda activate compressai_p100
+```
+### Running an evaluation
+```bash
+python3 evaluation/plot_compare_final.py
 ```
 
 ### Running a Job
