@@ -45,17 +45,6 @@ class CustomDataParallel(nn.DataParallel):
             return getattr(self.module, key)
 
 
-def configure_optimizers(net, args):
-    """Separate parameters for the main optimizer and the auxiliary optimizer.
-    Return two optimizers"""
-    conf = {
-        "net": {"type": "Adam", "lr": args.learning_rate},
-        "aux": {"type": "Adam", "lr": args.aux_learning_rate},
-    }
-    optimizer = net_aux_optimizer(net, conf)
-    return optimizer["net"], optimizer["aux"]
-
-
 def train_one_epoch(
     model, criterion, train_dataloader, optimizer, aux_optimizer, epoch, clip_max_norm
 ):
@@ -205,9 +194,7 @@ def main(argv):
     run = wandb.init(
         project="compressai-frozen_test", 
         config=args,
-        # Le nom du run sur le dashboard inclura le lambda
         name=f"{args.model}_ref_COCO_QUAL{args.quality}", 
-        # Optionnel : Groupe les runs pour comparer facilement
         group="experiment_batch_1"
     )
 
@@ -245,10 +232,10 @@ def main(argv):
     )
 
     net = image_models[args.model](quality=args.quality, pretrained=True)
-    net_empty = image_models[args.model](quality=args.quality, pretrained=False)  # On crée une instance vide pour récupérer la structure du decoder
+    net_empty = image_models[args.model](quality=args.quality, pretrained=False)
 
-    #  --- MODIF 2 : Change the decoder ---
-    net.g_s = net_empty.g_s  # On remplace le decoder pré-entraîné par un nouveau non entraîné
+    # Replace the pre-trained decoder with a new untrained one
+    net.g_s = net_empty.g_s
 
     net = net.to(device)
 
@@ -261,10 +248,10 @@ def main(argv):
     if args.cuda and torch.cuda.device_count() > 1:
         net = CustomDataParallel(net)
 
-    optimizer = optim.Adam(net.g_s.parameters(), lr=args.learning_rate)  # Remove the aux optimizer
+    optimizer = optim.Adam(net.g_s.parameters(), lr=args.learning_rate)
     aux_optimizer = None
     lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "min")
-    criterion = nn.MSELoss() # Use only MSE for the decoder training
+    criterion = nn.MSELoss()
     last_epoch = 0
     if args.checkpoint:  # load from previous checkpoint
         print("Loading", args.checkpoint)
@@ -275,10 +262,10 @@ def main(argv):
             optimizer.load_state_dict(checkpoint["optimizer"])
             lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
         except Exception as e:
-            print(f"Warning: Impossible de charger l'état de l'optimiseur ({e}). On repart à zéro.")
+            print(f"Warning: Cannot load optimizer state ({e}). Starting from scratch.")
 
-    print(f"Encodeur trainable ? {list(net.g_a.parameters())[0].requires_grad}") # Doit être False
-    print(f"Décodeur trainable ? {list(net.g_s.parameters())[0].requires_grad}") # Doit être True
+    print(f"Is encoder trainable? {list(net.g_a.parameters())[0].requires_grad}")
+    print(f"Is decoder trainable? {list(net.g_s.parameters())[0].requires_grad}")
     
     best_loss = float("inf")
 
@@ -286,11 +273,10 @@ def main(argv):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir, exist_ok=True)
 
-    # --- Paramètres de l'Early Stopping ---
-    patience = 30  # Nombre d'époques sans amélioration avant de s'inquiéter
+    # Early stopping parameters
+    patience = 30
     epochs_without_improvement = 0
-    min_lr_threshold = 1e-7  # Le seuil de LR en dessous duquel on autorise l'arrêt
-    # --------------------------------------
+    min_lr_threshold = 1e-7
 
     for epoch in range(last_epoch, args.epochs):
         print(f"Learning rate: {optimizer.param_groups[0]['lr']}")
@@ -317,23 +303,18 @@ def main(argv):
 
         lr_scheduler.step(loss)
 
-        # 2. Récupération du Learning Rate actuel
         current_lr = optimizer.param_groups[0]['lr']
-        # 3. Logique du compteur de patience
         if loss < best_loss:
             is_best = True
             best_loss = loss
-            epochs_without_improvement = 0  # On reset le compteur car on a fait un meilleur score
+            epochs_without_improvement = 0
         else:
             is_best = False
             epochs_without_improvement += 1
 
         if args.save:
-                # Mettre à jour les tables CDF avant de sauvegarder pour remplir les buffers
                 net.update()
                 
-                # On construit un nom unique pour ne pas écraser les autres runs
-                # Exemple : checkpoints/bmshj2018-factorized_0.0130_checkpoint.pth.tar
                 current_name = f"{args.model}_ref_COCO_QUAL{args.quality}_checkpoint.pth.tar"
                 best_name = f"{args.model}_ref_COCO_QUAL{args.quality}_best_loss.pth.tar"
 
@@ -349,18 +330,17 @@ def main(argv):
                         "lr_scheduler": lr_scheduler.state_dict(),
                     },
                     is_best,
-                    filename=save_path,      # Le fichier de l'époque actuelle
-                    best_filename=best_path  # Le fichier du meilleur modèle
+                    filename=save_path,
+                    best_filename=best_path
                 )
 
-        # 4. Condition d'Early Stopping intelligente
         if epochs_without_improvement >= patience:
             if current_lr <= min_lr_threshold:
-                print(f"\n🛑 Early stopping déclenché à l'époque {epoch} !")
-                print(f"Aucune amélioration depuis {patience} époques ET le LR ({current_lr}) a atteint le seuil minimum.")
-                break  # On quitte la boucle d'entraînement
+                print(f"\n🛑 Early stopping triggered at epoch {epoch}!")
+                print(f"No improvement for {patience} epochs AND learning rate ({current_lr}) reached minimum threshold.")
+                break
             else:
-                print(f"⚠️ Patience atteinte ({epochs_without_improvement}/{patience}), mais on continue car le LR ({current_lr}) n'est pas encore au minimum.")
+                print(f"⚠️ Patience reached ({epochs_without_improvement}/{patience}), but continuing as learning rate ({current_lr}) hasn't reached minimum.")
 
     wandb.finish()
 
