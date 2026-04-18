@@ -25,6 +25,7 @@ The repository is organized as follows:
 * `evaluation/`: Testing and plotting scripts.
   * `plot_compare_final.py`: Computes FLOPs, parameters, and generates Rate-Distortion curves.
   * `results/rd_curve.png`: The generated results visualization.
+* `checkpoints`: Models weights (check the section **Model Weights** to obtain them).
 * `datasets/`: Folder with the training and evalution dataset.
   * `COCO/`: The **COCO** dataset used for training the models.
     * `test`: Test set.
@@ -52,6 +53,16 @@ To ensure a rigorous scientific comparison (ablation study), we followed this pr
 3. **Loss Function:** Optimized using **MSE** (Mean Squared Error).
 4. **Quality Levels:** Models were trained for qualities `2`, `4`, `6`, and `8` to cover different latent channel widths ($N=128$ and $N=192$).
 5. **Optimization:** Controlled by an Early Stopping mechanism based on learning rate plateaus.
+
+---
+
+## 📦 Models Weights
+
+We provide the pre-trained weights for my models to allow for easy reproducibility. 
+
+You can download the `.pth.tar` checkpoint files directly from my **[Releases Page](https://github.com/l0men/lightweight_decoder_for_learned_image_compression/releases/tag/v1.0)**.
+
+To test a downloaded model, simply place the `.pth.tar` file in a local `checkpoints/` folder and run the evaluation script.
 
 ---
 
